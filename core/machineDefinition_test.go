@@ -87,13 +87,13 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 			Condition{
 				name: "isEnabled",
 				f: func(o Object) bool {
-					return true // TODO use object somehow
+					return o.(obj).enabled
 				},
 			},
 		},
 	}
 
-	o := obj{status: "a"}
+	o := obj{status: "a", enabled: true}
 	availableT := md.findAvailableTransitions(o)
 	if len(availableT) != 2 {
 		t.Errorf("Failed to find available transitions for 'a': got %v", availableT)
