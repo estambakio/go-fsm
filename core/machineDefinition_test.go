@@ -44,7 +44,7 @@ func TestMachineDefinition_getConditionByName(t *testing.T) {
 
 	cond, err = md.getConditionByName("notfound")
 	if err == nil {
-		t.Errorf("Should fail for unknown condition but didn't: %v", cond)
+		t.Errorf("Should've failed for unknown condition but didn't: %v", cond)
 	}
 }
 

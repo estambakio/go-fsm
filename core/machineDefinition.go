@@ -77,7 +77,6 @@ func (md *MachineDefinition) findAvailableTransitions(o Object) []Transition {
 				if err != nil {
 					log.Fatalf("Condition '%s' not found", guard.name)
 				}
-				// TODO handle case if condition is not found
 				if cond.f(o) == false {
 					return false
 				}
