@@ -93,10 +93,37 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 		},
 	}
 
-	o := obj{status: "a", enabled: true}
-	availableT := md.findAvailableTransitions(o)
-	if len(availableT) != 2 {
+	availableT, err := md.findAvailableTransitions(obj{status: "a", enabled: true})
+	if err != nil || len(availableT) != 2 {
 		t.Errorf("Failed to find available transitions for 'a': got %v", availableT)
+	}
+
+	availableT, err = md.findAvailableTransitions(obj{status: "a", enabled: false})
+	if err != nil || len(availableT) != 1 {
+		t.Errorf("Failed to find available transitions for 'a': got %v", availableT)
+	}
+
+	// if condition is not found findAvailableTransitions should return error
+	md = &MachineDefinition{
+		schema: Schema{
+			transitions: []Transition{
+				Transition{
+					from:  "a",
+					to:    "b",
+					event: "a->b",
+					guards: []Guard{
+						Guard{
+							name: "isEnabled",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	availableT, err = md.findAvailableTransitions(obj{status: "a"})
+	if err == nil {
+		t.Errorf("Condition not found, should've returned error, but returned %v", availableT)
 	}
 }
 

@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"log"
 )
 
 type Object interface {
@@ -61,7 +60,7 @@ func (md *MachineDefinition) getConditionByName(name string) (*Condition, error)
 	return nil, fmt.Errorf("Condition with name '%s' not found", name)
 }
 
-func (md *MachineDefinition) findAvailableTransitions(o Object) []Transition {
+func (md *MachineDefinition) findAvailableTransitions(o Object) ([]Transition, error) {
 	availableT := []Transition{}
 
 	status := o.Status()
@@ -71,24 +70,28 @@ func (md *MachineDefinition) findAvailableTransitions(o Object) []Transition {
 			continue
 		}
 
-		allowed := func() bool {
+		allowed, err := func() (bool, error) {
 			for _, guard := range t.guards {
 				cond, err := md.getConditionByName(guard.name)
 				if err != nil {
-					log.Fatalf("Condition '%s' not found", guard.name)
+					return false, err
 				}
 				if cond.f(o) == false {
-					return false
+					return false, nil
 				}
 			}
-			return true
+			return true, nil
 		}()
+
+		if err != nil {
+			return nil, err
+		}
 
 		if allowed {
 			availableT = append(availableT, t)
 		}
 	}
-	return availableT
+	return availableT, nil
 }
 
 func (s *State) String() string {
