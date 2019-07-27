@@ -1,19 +1,16 @@
 package core
 
 import (
+	"context"
 	"testing"
 )
 
 func TestMachineDefinition_getAvailableStates(t *testing.T) {
 	md := &MachineDefinition{
-		schema: Schema{
-			states: []State{
-				State{
-					name: "one",
-				},
-				State{
-					name: "two",
-				},
+		Schema: Schema{
+			States: []State{
+				State{Name: "one"},
+				State{Name: "two"},
 			},
 		},
 	}
@@ -25,21 +22,17 @@ func TestMachineDefinition_getAvailableStates(t *testing.T) {
 
 func TestMachineDefinition_getConditionByName(t *testing.T) {
 	md := &MachineDefinition{
-		conditions: []Condition{
-			Condition{
-				name: "one",
-			},
-			Condition{
-				name: "two",
-			},
+		Conditions: []Condition{
+			Condition{Name: "one"},
+			Condition{Name: "two"},
 		},
 	}
 	cond, err := md.getConditionByName("one")
 	if err != nil {
 		t.Errorf("Failed to get condition '%s' with error %v", "one", err)
 	}
-	if cond.name != "one" {
-		t.Errorf("Wrong condition: expected '%s' but got '%s'", "one", cond.name)
+	if cond.Name != "one" {
+		t.Errorf("Wrong condition: expected '%s' but got '%s'", "one", cond.Name)
 	}
 
 	cond, err = md.getConditionByName("notfound")
@@ -59,61 +52,50 @@ func (o obj) Status() string {
 
 func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 	md := &MachineDefinition{
-		schema: Schema{
-			transitions: []Transition{
-				Transition{
-					from:  "a",
-					to:    "b",
-					event: "a->b",
-					guards: []Guard{
-						Guard{
-							name: "isEnabled",
-						},
+		Schema: Schema{
+			Transitions: []Transition{
+				Transition{From: "a", To: "b", Event: "a->b",
+					Guards: []Guard{
+						Guard{Name: "isEnabled"},
 					},
 				},
-				Transition{
-					from:  "a",
-					to:    "c",
-					event: "a->c",
-				},
-				Transition{
-					from:  "b",
-					to:    "c",
-					event: "b->c",
-				},
+				Transition{From: "a", To: "c", Event: "a->c"},
+				Transition{From: "b", To: "c", Event: "b->c"},
 			},
 		},
-		conditions: []Condition{
+		Conditions: []Condition{
 			Condition{
-				name: "isEnabled",
-				f: func(o Object) bool {
+				Name: "isEnabled",
+				F: func(ctx context.Context, o Object) bool {
 					return o.(obj).enabled
 				},
 			},
 		},
 	}
 
-	availableT, err := md.findAvailableTransitions(obj{status: "a", enabled: true})
+	ctx := context.Background()
+
+	availableT, err := md.findAvailableTransitions(ctx, obj{status: "a", enabled: true}, "")
 	if err != nil || len(availableT) != 2 {
 		t.Errorf("Failed to find available transitions for 'a': got %v", availableT)
 	}
 
-	availableT, err = md.findAvailableTransitions(obj{status: "a", enabled: false})
+	availableT, err = md.findAvailableTransitions(ctx, obj{status: "a", enabled: false}, "")
 	if err != nil || len(availableT) != 1 {
 		t.Errorf("Failed to find available transitions for 'a': got %v", availableT)
 	}
 
 	// if condition is not found findAvailableTransitions should return error
 	md = &MachineDefinition{
-		schema: Schema{
-			transitions: []Transition{
+		Schema: Schema{
+			Transitions: []Transition{
 				Transition{
-					from:  "a",
-					to:    "b",
-					event: "a->b",
-					guards: []Guard{
+					From:  "a",
+					To:    "b",
+					Event: "a->b",
+					Guards: []Guard{
 						Guard{
-							name: "isEnabled",
+							Name: "isEnabled",
 						},
 					},
 				},
@@ -121,17 +103,8 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 		},
 	}
 
-	availableT, err = md.findAvailableTransitions(obj{status: "a"})
+	availableT, err = md.findAvailableTransitions(ctx, obj{status: "a"}, "")
 	if err == nil {
 		t.Errorf("Condition not found, should've returned error, but returned %v", availableT)
-	}
-}
-
-func TestState_String(t *testing.T) {
-	state := State{
-		name: "bestOfTheBest",
-	}
-	if state.String() != "bestOfTheBest" {
-		t.Errorf("Failed with %s", state.String())
 	}
 }
