@@ -59,8 +59,20 @@ func (md *MachineDefinition) getConditionByName(name string) (*Condition, error)
 	return nil, fmt.Errorf("Condition with name '%s' not found", name)
 }
 
-func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Object, event Event) ([]Transition, error) {
+func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Object, args ...interface{}) ([]Transition, error) {
 	availableT := []Transition{}
+
+	// handle dynamic assigning of optional args based on passed types (yay arbitrary order)
+	var event Event
+
+	for _, arg := range args {
+		switch arg := arg.(type) {
+		case Event:
+			event = arg
+		default:
+			return nil, fmt.Errorf("unknown type %T, value %v in findAvailableTransitions call", arg, arg)
+		}
+	}
 
 	for _, t := range md.Schema.Transitions {
 		if t.From != o.Status() {

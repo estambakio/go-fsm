@@ -75,12 +75,12 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 
 	ctx := context.Background()
 
-	availableT, err := md.findAvailableTransitions(ctx, obj{status: "a", enabled: true}, "")
+	availableT, err := md.findAvailableTransitions(ctx, obj{status: "a", enabled: true})
 	if err != nil || len(availableT) != 2 {
 		t.Errorf("Failed to find available transitions for 'a': got %v", availableT)
 	}
 
-	availableT, err = md.findAvailableTransitions(ctx, obj{status: "a", enabled: false}, "")
+	availableT, err = md.findAvailableTransitions(ctx, obj{status: "a", enabled: false})
 	if err != nil || len(availableT) != 1 {
 		t.Errorf("Failed to find available transitions for 'a': got %v", availableT)
 	}
@@ -103,7 +103,7 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 		},
 	}
 
-	availableT, err = md.findAvailableTransitions(ctx, obj{status: "a"}, "")
+	availableT, err = md.findAvailableTransitions(ctx, obj{status: "a"})
 	if err == nil {
 		t.Errorf("Condition not found, should've returned error, but returned %v", availableT)
 	}
