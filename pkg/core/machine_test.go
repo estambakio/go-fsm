@@ -67,3 +67,24 @@ func TestMachine_CurrentState(t *testing.T) {
 		t.Error("Should've failed: expected error but got nil")
 	}
 }
+
+func TestMachine_AvailableTransitions(t *testing.T) {
+	md := &MachineDefinition{
+		Schema: Schema{
+			Transitions: []Transition{
+				Transition{From: "a", To: "b", Event: "a->b"},
+				Transition{From: "b", To: "c", Event: "b->c"},
+				Transition{From: "c", To: "d", Event: "c->d"},
+			},
+		},
+	}
+
+	machine := NewMachine(context.Background(), md)
+
+	object := &obj{status: "b"}
+
+	result, err := machine.AvailableTransitions(object, Event("b->c"))
+	if len(result) != 1 || err != nil {
+		t.Errorf("Failed to get available transitions: received %v and %v", result, err)
+	}
+}

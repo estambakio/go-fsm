@@ -5,18 +5,22 @@ import (
 	"fmt"
 )
 
+// Param describes a single param for guard's condition function
 type Param struct {
 	Name  string
 	Value interface{}
 }
 
+// Guard holds configuration for condition call
 type Guard struct {
 	Name   string
 	Params []Param
 }
 
+// Event is a reason for transition
 type Event string
 
+// Transition is a single path between two states
 type Transition struct {
 	From   string
 	To     string
@@ -24,10 +28,12 @@ type Transition struct {
 	Guards []Guard
 }
 
+// State marks a node in workflow's graph
 type State struct {
 	Name string
 }
 
+// Schema is a workflow configuration, TODO: add serialize/parse methods (to/from JSON)
 type Schema struct {
 	Name         string
 	InitialState State
@@ -36,11 +42,13 @@ type Schema struct {
 	Transitions  []Transition
 }
 
+// Condition wraps a function which defines if certain condition is passed for provided object or not
 type Condition struct {
 	Name string
 	F    func(ctx context.Context, o Object) bool
 }
 
+// MachineDefinition is a configuration for finite states machine
 type MachineDefinition struct {
 	Schema     Schema
 	Conditions []Condition
@@ -60,7 +68,7 @@ func (md *MachineDefinition) getConditionByName(name string) (*Condition, error)
 }
 
 func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Object, args ...interface{}) ([]Transition, error) {
-	availableT := []Transition{}
+	transitions := []Transition{}
 
 	// handle dynamic assigning of optional args based on passed types (yay arbitrary order)
 	var event Event
@@ -79,7 +87,7 @@ func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Obj
 			continue
 		}
 
-		// if event does matter for search then narrow transitions to only containing this event
+		// if event does matter for search then narrow down transitions to only those which contain this event
 		if event != "" && t.Event != event {
 			continue
 		}
@@ -102,8 +110,8 @@ func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Obj
 		}
 
 		if allowed {
-			availableT = append(availableT, t)
+			transitions = append(transitions, t)
 		}
 	}
-	return availableT, nil
+	return transitions, nil
 }

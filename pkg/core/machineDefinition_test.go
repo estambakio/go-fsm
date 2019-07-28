@@ -98,4 +98,33 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 	if err == nil {
 		t.Errorf("Condition not found, should've returned error, but returned %v", availableT)
 	}
+
+	// test request with event value
+	md = &MachineDefinition{
+		Schema: Schema{
+			Transitions: []Transition{
+				Transition{From: "a", To: "b", Event: "a->b(1)"},
+				Transition{From: "a", To: "b", Event: "a->b(2)"},
+				Transition{From: "b", To: "c", Event: "b->c"},
+			},
+		},
+	}
+
+	// first make sure search without event returns all available transitions
+	availableT, err = md.findAvailableTransitions(ctx, &obj{status: "a"})
+	if err != nil || len(availableT) != 2 {
+		t.Errorf("expected 2 transitions, but got %v %v", availableT, err)
+	}
+
+	// make sure search with event returns only event-related transition
+	availableT, err = md.findAvailableTransitions(ctx, &obj{status: "a"}, Event("a->b(2)"))
+	if err != nil || len(availableT) != 1 {
+		t.Errorf("expected 1 transition, but got %v %v", availableT, err)
+	}
+
+	// test error case when function receives unexpected arg (test variadic args)
+	availableT, err = md.findAvailableTransitions(ctx, &obj{status: "a"}, "string arg is not expected")
+	if err == nil {
+		t.Error("should've failed for unexpected variadic arg of type 'string', but didn't")
+	}
 }
