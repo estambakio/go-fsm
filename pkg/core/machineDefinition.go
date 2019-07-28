@@ -70,7 +70,8 @@ func (md *MachineDefinition) getConditionByName(name string) (*Condition, error)
 func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Object, args ...interface{}) ([]Transition, error) {
 	transitions := []Transition{}
 
-	// handle dynamic assigning of optional args based on passed types (yay arbitrary order)
+	// handle variadic optional args based on passed types (yay arbitrary order)
+	// TODO: add request object as in opuscapita/fsm-workflow
 	var event Event
 
 	for _, arg := range args {

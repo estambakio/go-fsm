@@ -35,7 +35,6 @@ func (m *Machine) CurrentState(o Object) (state State, err error) {
 }
 
 // AvailableTransitions returns transitions available for provided Object
-// TODO: make 'event' variadic arg (along with request object in future)
-func (m *Machine) AvailableTransitions(o Object, event Event) ([]Transition, error) {
-	return m.md.findAvailableTransitions(m.ctx, o, event)
+func (m *Machine) AvailableTransitions(o Object, args ...interface{}) ([]Transition, error) {
+	return m.md.findAvailableTransitions(m.ctx, o, args...)
 }

@@ -74,6 +74,7 @@ func TestMachine_AvailableTransitions(t *testing.T) {
 			Transitions: []Transition{
 				Transition{From: "a", To: "b", Event: "a->b"},
 				Transition{From: "b", To: "c", Event: "b->c"},
+				Transition{From: "b", To: "d", Event: "b->d"},
 				Transition{From: "c", To: "d", Event: "c->d"},
 			},
 		},
@@ -85,6 +86,18 @@ func TestMachine_AvailableTransitions(t *testing.T) {
 
 	result, err := machine.AvailableTransitions(object, Event("b->c"))
 	if len(result) != 1 || err != nil {
-		t.Errorf("Failed to get available transitions: received %v and %v", result, err)
+		t.Errorf("Failed to get 1 available transition: received %v and %v", result, err)
+	}
+
+	result, err = machine.AvailableTransitions(object)
+	if len(result) != 2 || err != nil {
+		t.Errorf("Failed to get 2 available transitions: received %v and %v", result, err)
+	}
+
+	// if object is in unknown state then return empty slice
+	object.status = "notInList"
+	result, err = machine.AvailableTransitions(object)
+	if len(result) != 0 || err != nil {
+		t.Errorf("Failed to get 0 available transitions: received %v and %v", result, err)
 	}
 }
