@@ -1,3 +1,4 @@
+// Package core provides core features for building finite state machine.
 package core
 
 import (
