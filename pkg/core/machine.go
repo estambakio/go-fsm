@@ -1,20 +1,41 @@
 package core
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
+// Machine is the main structure which executes workflow
 type Machine struct {
 	ctx context.Context
 	md  *MachineDefinition
 }
 
+// NewMachine returns new machine instance
 func NewMachine(ctx context.Context, md *MachineDefinition) *Machine {
 	return &Machine{ctx, md}
 }
 
-func (m *Machine) currentState(o Object) string {
-	return o.Status()
+// Start sets object status to initial state
+// TODO: add user, description variadic args like in findAvailableTransitions
+func (m *Machine) Start(o Object) {
+	o.SetStatus(m.md.Schema.InitialState.Name)
 }
 
+// CurrentState returns current state based on object's status
+func (m *Machine) CurrentState(o Object) (state State, err error) {
+	err = fmt.Errorf("state '%s' not found in schema", o.Status())
+	for _, s := range m.md.Schema.States {
+		if s.Name == o.Status() {
+			state = s
+			err = nil
+		}
+	}
+	return state, err
+}
+
+// AvailableTransitions returns transitions available for provided Object
+// TODO: make 'event' variadic arg (along with request object in future)
 func (m *Machine) AvailableTransitions(o Object, event Event) ([]Transition, error) {
 	return m.md.findAvailableTransitions(m.ctx, o, event)
 }
