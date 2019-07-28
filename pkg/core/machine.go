@@ -29,6 +29,7 @@ func (m *Machine) CurrentState(o Object) (state State, err error) {
 		if s.Name == o.Status() {
 			state = s
 			err = nil
+			break
 		}
 	}
 	return state, err
