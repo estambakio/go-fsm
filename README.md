@@ -1,11 +1,7 @@
-# go-fsm
+[![CircleCI](https://circleci.com/gh/estambakio/go-fsm.svg?style=svg)](https://circleci.com/gh/estambakio/go-fsm)
 
-## Goal
+# Finite State Machine written in Go
 
-Learn Go programming & testing. Try and rewrite [fsm-workflow](https://github.com/OpusCapita/fsm-workflow) core in Go with 100% test coverage.
+Documentation: https://godoc.org/github.com/estambakio/go-fsm
 
-## Test
-
-```
-cd ./core && go test
-```
+`go test -v -cover ./...`
