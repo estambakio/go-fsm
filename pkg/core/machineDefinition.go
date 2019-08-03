@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"sync"
 )
 
 // Param describes a single param for guard's condition function
@@ -83,6 +84,7 @@ func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Obj
 		}
 	}
 
+	// TODO process transitions concurrently
 	for _, t := range md.Schema.Transitions {
 		if t.From != o.Status() {
 			continue
@@ -94,15 +96,41 @@ func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Obj
 		}
 
 		allowed, err := func() (bool, error) {
+			// stops all running goroutines if any
+			stopC := make(chan struct{})
+			defer close(stopC)
+
+			// process guards concurrently
+			results := make(chan bool)
+			var wg sync.WaitGroup
+
 			for _, guard := range t.Guards {
 				cond, err := md.getConditionByName(guard.Name)
 				if err != nil {
 					return false, err
 				}
-				if cond.F(ctx, o) == false {
+
+				wg.Add(1)
+				go func(cond *Condition) {
+					defer wg.Done()
+					select {
+					case <-stopC:
+					case results <- cond.F(ctx, o):
+					}
+				}(cond)
+			}
+
+			go func() {
+				wg.Wait()
+				close(results)
+			}()
+
+			for r := range results {
+				if r == false {
 					return false, nil
 				}
 			}
+
 			return true, nil
 		}()
 

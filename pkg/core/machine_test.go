@@ -101,3 +101,88 @@ func TestMachine_AvailableTransitions(t *testing.T) {
 		t.Errorf("Failed to get 0 available transitions: received %v and %v", result, err)
 	}
 }
+
+func TestMachine_IsInFinalState(t *testing.T) {
+	md := &MachineDefinition{
+		Schema: Schema{
+			FinalStates: []State{
+				State{Name: "one"},
+				State{Name: "two"},
+			},
+		},
+	}
+
+	machine := NewMachine(context.Background(), md)
+
+	tests := []struct {
+		status   string
+		expected bool
+	}{
+		{status: "one", expected: true},
+		{status: "two", expected: true},
+		{status: "three", expected: false},
+	}
+
+	for i, test := range tests {
+		object := &obj{status: test.status}
+		result := machine.IsInFinalState(object)
+		if result != test.expected {
+			t.Errorf("Expected %v for test %d but got %v", test.expected, i, result)
+		}
+	}
+}
+
+func TestMachine_AvailableStates(t *testing.T) {
+	md := &MachineDefinition{
+		Schema: Schema{
+			States: []State{
+				State{Name: "one"},
+				State{Name: "two"},
+			},
+		},
+	}
+
+	machine := NewMachine(context.Background(), md)
+
+	expected := len(md.Schema.States)
+	result := len(machine.AvailableStates())
+	if result != expected {
+		t.Errorf("Expected %d but got %v", expected, result)
+	}
+}
+
+func TestMachine_IsRunning(t *testing.T) {
+	md := &MachineDefinition{
+		Schema: Schema{
+			FinalStates: []State{
+				State{Name: "i_am_final"},
+			},
+			States: []State{
+				State{Name: "one"},
+				State{Name: "two"},
+				State{Name: "i_am_final"},
+				State{Name: "three"},
+			},
+		},
+	}
+
+	machine := NewMachine(context.Background(), md)
+
+	tests := []struct {
+		status   string
+		expected bool
+	}{
+		{status: "one", expected: true},
+		{status: "two", expected: true},
+		{status: "i_am_final", expected: false},
+		{status: "not_in_schema", expected: false},
+	}
+
+	for i, test := range tests {
+		object := &obj{status: test.status}
+		result := machine.IsRunning(object)
+		if result != test.expected {
+			t.Errorf("Expected %v for test %d but got %v", test.expected, i, result)
+		}
+	}
+}
