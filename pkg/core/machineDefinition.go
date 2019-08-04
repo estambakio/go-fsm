@@ -68,6 +68,8 @@ func (md *MachineDefinition) getConditionByName(name string) (*Condition, error)
 	return nil, fmt.Errorf("Condition with name '%s' not found", name)
 }
 
+// findAvailableTransitions returns transitions available for provided Object.
+// Event can be passed as optional argument to narrow search down to particular Event.
 func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Object, args ...interface{}) ([]Transition, error) {
 	transitions := []Transition{}
 
@@ -84,55 +86,16 @@ func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Obj
 		}
 	}
 
-	// TODO process transitions concurrently
+	// In most cases one or two transitions are defined for particular 'from' state,
+	// therefore consequent loop shouldn't introduce a bottleneck
 	for _, t := range md.Schema.Transitions {
-		if t.From != o.Status() {
+		if t.From != o.Status() ||
+			// if event does matter for search then narrow down transitions to only those which contain this event
+			(event != "" && t.Event != event) {
 			continue
 		}
 
-		// if event does matter for search then narrow down transitions to only those which contain this event
-		if event != "" && t.Event != event {
-			continue
-		}
-
-		allowed, err := func() (bool, error) {
-			// stops all running goroutines if any
-			stopC := make(chan struct{})
-			defer close(stopC)
-
-			// process guards concurrently
-			results := make(chan bool)
-			var wg sync.WaitGroup
-
-			for _, guard := range t.Guards {
-				cond, err := md.getConditionByName(guard.Name)
-				if err != nil {
-					return false, err
-				}
-
-				wg.Add(1)
-				go func(cond *Condition) {
-					defer wg.Done()
-					select {
-					case <-stopC:
-					case results <- cond.F(ctx, o):
-					}
-				}(cond)
-			}
-
-			go func() {
-				wg.Wait()
-				close(results)
-			}()
-
-			for r := range results {
-				if r == false {
-					return false, nil
-				}
-			}
-
-			return true, nil
-		}()
+		allowed, err := md.transitionAllowed(ctx, o, t)
 
 		if err != nil {
 			return nil, err
@@ -143,4 +106,46 @@ func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Obj
 		}
 	}
 	return transitions, nil
+}
+
+// transitionAllowed evaluates transition's guards concurrently and returns aggregated result
+func (md *MachineDefinition) transitionAllowed(ctx context.Context, o Object, t Transition) (bool, error) {
+	// stops all running goroutines if any
+	stopC := make(chan struct{})
+	defer close(stopC)
+
+	results := make(chan bool)
+
+	var wg sync.WaitGroup
+
+	for _, guard := range t.Guards {
+		cond, err := md.getConditionByName(guard.Name)
+		if err != nil {
+			return false, err
+		}
+
+		wg.Add(1)
+		go func(cond *Condition) {
+			defer wg.Done() // decrement waitGroup counter before any return
+
+			select {
+			case <-ctx.Done(): // cancel if context is cancelled
+			case <-stopC: // cancel if parent function returned prematurely (one of guards returned false or/and error)
+			case results <- cond.F(ctx, o): // evaluate condition and send result outside
+			}
+		}(cond)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for r := range results {
+		if r == false {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

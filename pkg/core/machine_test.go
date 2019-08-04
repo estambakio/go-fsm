@@ -186,3 +186,36 @@ func TestMachine_IsRunning(t *testing.T) {
 		}
 	}
 }
+
+func TestMachine_Can(t *testing.T) {
+	md := &MachineDefinition{
+		Schema: Schema{
+			States: []State{State{Name: "a"}, State{Name: "b"}, State{Name: "c"}},
+			Transitions: []Transition{
+				Transition{From: "a", To: "b", Event: Event("a->b")},
+				Transition{From: "b", To: "c", Event: Event("b->c")},
+			},
+		},
+	}
+
+	machine := NewMachine(context.Background(), md)
+
+	tests := []struct {
+		event    string
+		status   string
+		expected bool
+	}{
+		{event: "a->b", status: "a", expected: true},
+		{event: "a->b", status: "b", expected: false},
+		{event: "b->c", status: "a", expected: false},
+		{event: "b->c", status: "b", expected: true},
+	}
+
+	for i, test := range tests {
+		object := &obj{status: test.status}
+		result := machine.Can(object, Event(test.event))
+		if result != test.expected {
+			t.Errorf("Expected %v for test %d but got %v", test.expected, i, result)
+		}
+	}
+}

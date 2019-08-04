@@ -1,4 +1,4 @@
-// Package core provides core features for building finite state machine.
+// Package core provides building blocks for a finite state machine.
 package core
 
 import (
@@ -8,6 +8,7 @@ import (
 
 // Machine is the main structure which executes workflow
 type Machine struct {
+	// context is passed to all downstream guards and actions and can be used for their cancellation
 	ctx context.Context
 	md  *MachineDefinition
 }
@@ -23,7 +24,8 @@ func (m *Machine) Start(o Object) {
 	o.SetStatus(m.md.Schema.InitialState.Name)
 }
 
-// AvailableTransitions returns transitions available for provided Object
+// AvailableTransitions returns transitions available for provided Object.
+// Event can be passed as optional argument to narrow search down to particular Event.
 func (m *Machine) AvailableTransitions(o Object, args ...interface{}) ([]Transition, error) {
 	return m.md.findAvailableTransitions(m.ctx, o, args...)
 }
@@ -64,4 +66,10 @@ func (m *Machine) IsRunning(o Object) bool {
 		}
 	}
 	return false
+}
+
+// Can indicates weither object can perform transition according to event
+func (m *Machine) Can(o Object, e Event) bool {
+	trs, err := m.AvailableTransitions(o, e)
+	return err == nil && len(trs) > 0
 }
