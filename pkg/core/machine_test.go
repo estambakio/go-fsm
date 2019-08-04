@@ -219,3 +219,55 @@ func TestMachine_Can(t *testing.T) {
 		}
 	}
 }
+
+func TestMachine_SendEvent(t *testing.T) {
+	md := &MachineDefinition{
+		Schema: Schema{
+			States: []State{State{Name: "a"}, State{Name: "b"}, State{Name: "c"}},
+			Transitions: []Transition{
+				Transition{From: "a", To: "b", Event: Event("a->b")},
+				Transition{From: "b", To: "c", Event: Event("b->c")},
+				Transition{From: "c", To: "d", Event: Event("c->d")},
+			},
+		},
+	}
+
+	machine := NewMachine(context.Background(), md)
+
+	object := &obj{status: "a"}
+
+	steps := []struct {
+		event       string
+		statusAfter string
+	}{
+		{event: "a->b", statusAfter: "b"},
+		{event: "b->c", statusAfter: "c"},
+		{event: "c->d", statusAfter: "d"},
+	}
+	for i, step := range steps {
+		err := machine.SendEvent(object, Event(step.event))
+		if err != nil || object.Status() != step.statusAfter {
+			t.Errorf("Failed test %d: expected status: %v; real err: %v, real status: %v",
+				i,
+				step.statusAfter,
+				err,
+				object.Status(),
+			)
+		}
+	}
+
+	// send an event which is not available for current state ("d")
+	object.SetStatus("d") // just to prevent tests from breaking in case of changes
+	err := machine.SendEvent(object, Event("d->e"))
+	if err == nil || object.Status() != "d" {
+		t.Errorf("Expected error and status 'd'; got error %v and status %v", err, object.Status())
+	}
+
+	// add second transition for state 'c' with the same event 'c->d' - this is error
+	md.Schema.Transitions = append(md.Schema.Transitions, Transition{From: "c", To: "e", Event: Event("c->d")})
+	object.SetStatus("c")
+	err = machine.SendEvent(object, Event("c->d"))
+	if err == nil || object.Status() != "c" {
+		t.Errorf("Expected error and status 'c'; got error %v and status %v", err, object.Status())
+	}
+}

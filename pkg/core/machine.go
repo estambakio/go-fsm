@@ -73,3 +73,24 @@ func (m *Machine) Can(o Object, e Event) bool {
 	trs, err := m.AvailableTransitions(o, e)
 	return err == nil && len(trs) > 0
 }
+
+// SendEvent triggers transition according to Event
+// TODO: add actions and return results of their invocation
+// TODO(?): (design) return revert function(s) along with error? So that caller can revert transition in case of an error
+func (m *Machine) SendEvent(o Object, e Event) error {
+	trs, err := m.AvailableTransitions(o, e)
+	if err != nil {
+		return err
+	}
+
+	if len(trs) != 1 {
+		return fmt.Errorf("SendEvent: expected 1 transition in SendEvent, but got %d; input: %v, %v", len(trs), o, e)
+	}
+
+	t := trs[0]
+
+	// TODO: add actions' invocations here
+
+	o.SetStatus(t.To)
+	return nil
+}
