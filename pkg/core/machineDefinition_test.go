@@ -5,6 +5,51 @@ import (
 	"testing"
 )
 
+func TestMachineDefinition_NewMachineDefinition(t *testing.T) {
+	schema := Schema{
+		States: []State{
+			State{Name: "one"},
+			State{Name: "two"},
+		},
+	}
+
+	_, err := NewMachineDefinition(schema)
+	if err != nil {
+		t.Errorf("Failed with %v", err)
+	}
+
+	schema.Transitions = []Transition{
+		Transition{
+			From: "one",
+			To:   "two",
+			Guards: []Guard{
+				Guard{Name: "lessThan"},
+			},
+		},
+	}
+
+	_, err = NewMachineDefinition(schema)
+	if err == nil {
+		t.Errorf("should fail if guard refers to unknown condition")
+	}
+
+	lessThan := Condition{
+		Name: "lessThan",
+		F:    func(c context.Context, o Object) bool { return true },
+	}
+
+	_, err = NewMachineDefinition(schema, []Condition{lessThan})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	schema.Transitions = append(schema.Transitions, Transition{From: "two", To: "unknown_state"})
+	_, err = NewMachineDefinition(schema)
+	if err == nil {
+		t.Errorf("should fail if transition refers to unknown state")
+	}
+}
+
 func TestMachineDefinition_getAvailableStates(t *testing.T) {
 	md := &MachineDefinition{
 		Schema: Schema{

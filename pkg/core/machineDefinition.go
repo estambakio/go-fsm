@@ -55,6 +55,60 @@ type MachineDefinition struct {
 	Conditions []Condition
 }
 
+// NewMachineDefinition creates new ModelDefinition and validates if it's sane.
+// Optional args: []Condition (, TODO: []Action when implemented)
+// TODO validate if initial and final states refer to known states
+func NewMachineDefinition(schema Schema, args ...interface{}) (*MachineDefinition, error) {
+	md := &MachineDefinition{
+		Schema: schema,
+	}
+
+	// handle variadic optional args based on passed types
+	for _, arg := range args {
+		switch arg := arg.(type) {
+		case []Condition:
+			md.Conditions = arg
+		default:
+			return nil, fmt.Errorf("unknown type %T, value %v in NewMachineDefinition call", arg, arg)
+		}
+	}
+
+	// validate if transitions refer to known states
+	for _, t := range md.Schema.Transitions {
+		for _, ts := range []string{t.From, t.To} {
+			var stateFound bool
+			for _, s := range md.Schema.States {
+				if s.Name == ts {
+					stateFound = true
+					break
+				}
+			}
+			if !stateFound {
+				return nil, fmt.Errorf("transition %v refers to state %s which doesn't exist in schema", t, ts)
+			}
+		}
+	}
+
+	// validate if guards refer to known conditions
+	// TODO: add also release guards when implemented
+	for _, t := range md.Schema.Transitions {
+		for _, g := range t.Guards {
+			var conditionFound bool
+			for _, cond := range md.Conditions {
+				if cond.Name == g.Name {
+					conditionFound = true
+					break
+				}
+			}
+			if !conditionFound {
+				return nil, fmt.Errorf("guard %v in transition %v refers to condition %s which doesn't exist", g, t, g.Name)
+			}
+		}
+	}
+
+	return md, nil
+}
+
 func (md *MachineDefinition) getAvailableStates() []State {
 	return md.Schema.States
 }
