@@ -62,7 +62,7 @@ func TestMachine_CurrentState(t *testing.T) {
 		},
 	)
 
-	s, err = machine.CurrentState(object)
+	_, err = machine.CurrentState(object)
 	if err == nil {
 		t.Error("Should've failed: expected error but got nil")
 	}

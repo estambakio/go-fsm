@@ -168,7 +168,7 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 	}
 
 	// test error case when function receives unexpected arg (test variadic args)
-	availableT, err = md.findAvailableTransitions(ctx, &obj{status: "a"}, "string arg is not expected")
+	_, err = md.findAvailableTransitions(ctx, &obj{status: "a"}, "string arg is not expected")
 	if err == nil {
 		t.Error("should've failed for unexpected variadic arg of type 'string', but didn't")
 	}
