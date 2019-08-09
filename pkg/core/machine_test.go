@@ -322,4 +322,16 @@ func TestMachine_SendEvent(t *testing.T) {
 	if slackChannel.messageReceived != true {
 		t.Errorf("action didn't set value. Results: %v, test object: %v", rs, slackChannel)
 	}
+	if object.Status() != "b" {
+		t.Errorf("expected status: %s, but got %v", "b", object.Status())
+	}
+
+	// test if SendEvent fails if action is not defined in MachineDefinition
+	md.Actions = []Action{}
+	machine = NewMachine(context.Background(), md)
+	object = &obj{status: "a"}
+	_, err = machine.SendEvent(object, Event("a->b"))
+	if err == nil {
+		t.Error("expected error, but got nil")
+	}
 }
