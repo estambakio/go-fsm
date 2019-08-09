@@ -245,7 +245,7 @@ func TestMachine_SendEvent(t *testing.T) {
 		{event: "c->d", statusAfter: "d"},
 	}
 	for i, step := range steps {
-		err := machine.SendEvent(object, Event(step.event))
+		_, err := machine.SendEvent(object, Event(step.event))
 		if err != nil || object.Status() != step.statusAfter {
 			t.Errorf("Failed test %d: expected status: %v; real err: %v, real status: %v",
 				i,
@@ -258,7 +258,7 @@ func TestMachine_SendEvent(t *testing.T) {
 
 	// send an event which is not available for current state ("d")
 	object.SetStatus("d") // just to prevent tests from breaking in case of changes
-	err := machine.SendEvent(object, Event("d->e"))
+	_, err := machine.SendEvent(object, Event("d->e"))
 	if err == nil || object.Status() != "d" {
 		t.Errorf("Expected error and status 'd'; got error %v and status %v", err, object.Status())
 	}
@@ -266,8 +266,60 @@ func TestMachine_SendEvent(t *testing.T) {
 	// add second transition for state 'c' with the same event 'c->d' - this is error
 	md.Schema.Transitions = append(md.Schema.Transitions, Transition{From: "c", To: "e", Event: Event("c->d")})
 	object.SetStatus("c")
-	err = machine.SendEvent(object, Event("c->d"))
+	_, err = machine.SendEvent(object, Event("c->d"))
 	if err == nil || object.Status() != "c" {
 		t.Errorf("Expected error and status 'c'; got error %v and status %v", err, object.Status())
+	}
+
+	// test SendEvent with actions
+	slackChannel := struct {
+		messageReceived bool
+	}{
+		messageReceived: false,
+	}
+
+	md = &MachineDefinition{
+		Schema: Schema{
+			States: []State{State{Name: "a"}, State{Name: "b"}},
+			Transitions: []Transition{
+				Transition{
+					From:  "a",
+					To:    "b",
+					Event: Event("a->b"),
+					Actions: []ActionDefinition{
+						ActionDefinition{
+							Name: "sendNotification",
+							Params: []Param{
+								Param{Name: "channel", Value: "support"},
+							},
+						},
+					},
+				},
+			},
+		},
+		Actions: []Action{
+			Action{
+				Name: "sendNotification",
+				F: func(ctx context.Context, o Object, params []Param, prevActions []ActionResult) ActionResult {
+					slackChannel.messageReceived = true
+					return ActionResult{Name: "sendNotification"}
+				},
+			},
+		},
+	}
+
+	machine = NewMachine(context.Background(), md)
+
+	object = &obj{status: "a"}
+
+	rs, err := machine.SendEvent(object, Event("a->b"))
+	if err != nil {
+		t.Errorf("SendEvent with action: failed while shouldn't. Err: %v, results: %v", err, rs)
+	}
+	if rs[0].Err != nil {
+		t.Errorf("expected res.Err to be nil. Err: %v", rs[0].Err)
+	}
+	if slackChannel.messageReceived != true {
+		t.Errorf("action didn't set value. Results: %v, test object: %v", rs, slackChannel)
 	}
 }

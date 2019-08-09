@@ -12,7 +12,7 @@ type Param struct {
 	Value interface{}
 }
 
-// Guard holds configuration for condition call
+// Guard is a configuration for condition call
 type Guard struct {
 	Name   string
 	Params []Param
@@ -21,12 +21,19 @@ type Guard struct {
 // Event is a reason for transition
 type Event string
 
+// ActionDefinition is a configuration for action call
+type ActionDefinition struct {
+	Name   string
+	Params []Param
+}
+
 // Transition is a single path between two states
 type Transition struct {
-	From   string
-	To     string
-	Event  Event
-	Guards []Guard
+	From    string
+	To      string
+	Event   Event
+	Guards  []Guard
+	Actions []ActionDefinition
 }
 
 // State marks a node in workflow's graph
@@ -46,13 +53,29 @@ type Schema struct {
 // Condition wraps a function which defines if certain condition is passed for provided object or not
 type Condition struct {
 	Name string
-	F    func(ctx context.Context, o Object) bool
+	F    func(context.Context, Object, []Param) bool
+}
+
+// Action defines a function which should run as a payload of transition. Actions are designed to be side-effects.
+// When actions return without errors transition is considered done.
+type Action struct {
+	Name string
+	F    func(context.Context, Object, []Param, []ActionResult) ActionResult
+}
+
+// ActionResult is a struct returned by action. If Err != nil then action is considered failed.
+type ActionResult struct {
+	// Name of action which produced result
+	Name   string
+	Output interface{}
+	Err    error
 }
 
 // MachineDefinition is a configuration for finite states machine
 type MachineDefinition struct {
 	Schema     Schema
 	Conditions []Condition
+	Actions    []Action
 }
 
 // NewMachineDefinition creates new ModelDefinition and validates if it's sane.
@@ -122,6 +145,15 @@ func (md *MachineDefinition) getConditionByName(name string) (*Condition, error)
 	return nil, fmt.Errorf("Condition with name '%s' not found", name)
 }
 
+func (md *MachineDefinition) getActionByName(name string) (*Action, error) {
+	for _, a := range md.Actions {
+		if a.Name == name {
+			return &a, nil
+		}
+	}
+	return nil, fmt.Errorf("Action with name '%s' not found", name)
+}
+
 // findAvailableTransitions returns transitions available for provided Object.
 // Event can be passed as optional argument to narrow search down to particular Event.
 func (md *MachineDefinition) findAvailableTransitions(ctx context.Context, o Object, args ...interface{}) ([]Transition, error) {
@@ -179,15 +211,15 @@ func (md *MachineDefinition) transitionAllowed(ctx context.Context, o Object, t 
 		}
 
 		wg.Add(1)
-		go func(cond *Condition) {
+		go func(cond *Condition, params []Param) {
 			defer wg.Done() // decrement waitGroup counter before any return
 
 			select {
 			case <-ctx.Done(): // cancel if context is cancelled
 			case <-stopC: // cancel if parent function returned prematurely (one of guards returned false or/and error)
-			case results <- cond.F(ctx, o): // evaluate condition and send result outside
+			case results <- cond.F(ctx, o, params): // evaluate condition and send result outside
 			}
-		}(cond)
+		}(cond, guard.Params)
 	}
 
 	go func() {

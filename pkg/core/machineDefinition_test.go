@@ -35,7 +35,7 @@ func TestMachineDefinition_NewMachineDefinition(t *testing.T) {
 
 	lessThan := Condition{
 		Name: "lessThan",
-		F:    func(c context.Context, o Object) bool { return true },
+		F:    func(c context.Context, o Object, params []Param) bool { return true },
 	}
 
 	_, err = NewMachineDefinition(schema, []Condition{lessThan})
@@ -102,7 +102,7 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 		Conditions: []Condition{
 			Condition{
 				Name: "isEnabled",
-				F: func(ctx context.Context, o Object) bool {
+				F: func(ctx context.Context, o Object, params []Param) bool {
 					return o.(*obj).enabled
 				},
 			},
