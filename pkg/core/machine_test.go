@@ -272,10 +272,10 @@ func TestMachine_SendEvent(t *testing.T) {
 	}
 
 	// test SendEvent with actions
-	slackChannel := struct {
-		messageReceived bool
+	notificationSentTo := struct {
+		channel string
 	}{
-		messageReceived: false,
+		channel: "",
 	}
 
 	md = &MachineDefinition{
@@ -301,7 +301,9 @@ func TestMachine_SendEvent(t *testing.T) {
 			Action{
 				Name: "sendNotification",
 				F: func(ctx context.Context, o Object, params []Param, prevActions []ActionResult) ActionResult {
-					slackChannel.messageReceived = true
+					if params[0].Name == "channel" {
+						notificationSentTo.channel = params[0].Value.(string)
+					}
 					return ActionResult{Name: "sendNotification"}
 				},
 			},
@@ -319,8 +321,8 @@ func TestMachine_SendEvent(t *testing.T) {
 	if rs[0].Err != nil {
 		t.Errorf("expected res.Err to be nil. Err: %v", rs[0].Err)
 	}
-	if slackChannel.messageReceived != true {
-		t.Errorf("action didn't set value. Results: %v, test object: %v", rs, slackChannel)
+	if notificationSentTo.channel != "support" {
+		t.Errorf("action didn't set value. Results: %v, test object: %v", rs, notificationSentTo)
 	}
 	if object.Status() != "b" {
 		t.Errorf("expected status: %s, but got %v", "b", object.Status())
