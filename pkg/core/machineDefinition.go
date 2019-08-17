@@ -16,6 +16,8 @@ type Param struct {
 type Guard struct {
 	Name   string
 	Params []Param
+	// If Negate == true then return !result
+	Negate bool
 }
 
 // Event is a reason for transition
@@ -211,15 +213,21 @@ func (md *MachineDefinition) transitionAllowed(ctx context.Context, o Object, t 
 		}
 
 		wg.Add(1)
-		go func(cond *Condition, params []Param) {
+		go func(cond *Condition, guard Guard) {
 			defer wg.Done() // decrement waitGroup counter before any return
 
 			select {
 			case <-ctx.Done(): // cancel if context is cancelled
 			case <-stopC: // cancel if parent function returned prematurely (one of guards returned false or/and error)
-			case results <- cond.F(ctx, o, params): // evaluate condition and send result outside
+			case results <- func() bool { // evaluate condition and send result outside
+				result := cond.F(ctx, o, guard.Params)
+				if guard.Negate {
+					return !result
+				}
+				return result
+			}():
 			}
-		}(cond, guard.Params)
+		}(cond, guard)
 	}
 
 	go func() {

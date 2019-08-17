@@ -97,6 +97,11 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 				},
 				Transition{From: "a", To: "c", Event: "a->c"},
 				Transition{From: "b", To: "c", Event: "b->c"},
+				Transition{From: "c", To: "d", Event: "c->d",
+					Guards: []Guard{
+						Guard{Name: "isEnabled", Negate: true},
+					},
+				},
 			},
 		},
 		Conditions: []Condition{
@@ -119,6 +124,17 @@ func TestMachineDefinition_findAvailableTransitions(t *testing.T) {
 	availableT, err = md.findAvailableTransitions(ctx, &obj{status: "a", enabled: false})
 	if err != nil || len(availableT) != 1 {
 		t.Errorf("Failed to find available transitions for 'a': got %v", availableT)
+	}
+
+	// test Negate
+	availableT, err = md.findAvailableTransitions(ctx, &obj{status: "c", enabled: false})
+	if err != nil || availableT[0].Event != "c->d" {
+		t.Errorf("Failed to find available transition c->d for 'c' with Negate = true: got %v, %v", err, availableT)
+	}
+
+	availableT, err = md.findAvailableTransitions(ctx, &obj{status: "c", enabled: true})
+	if err != nil || len(availableT) != 0 {
+		t.Errorf("Failed to find 0 available transition for 'c' with Negate = true: got %v, %v", err, availableT)
 	}
 
 	// if condition is not found findAvailableTransitions should return error
